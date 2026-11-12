@@ -12,18 +12,24 @@ const authUserMiddleware = async(req,res,next)=>{
                 message:"need to login first"
             })
         }
+        const blockedtoken=await client.get(
+            `blocklist${token}`
+        )
+      
+           if (blockedToken) {
+            return res.status(401).json({
+                message: "Please login again"
+            });
+        }
         
         const payload = jwt.verify(token,process.env.KEY);
 
-        const existingUser = await User.findById(payload.id);
+      req.userId = payload.id;
+        req.token = token;
+        req.tokenPayload = payload;
 
-        if(!existingUser){
-            return res.status(404).json({
-                message: "User Doesnt Exist"
-            })
-        }
         
-        req.user = existingUser;
+     
         next();
 
     }

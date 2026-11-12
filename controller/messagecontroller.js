@@ -3,9 +3,12 @@ import mongoose from 'mongoose'
 import Chat from '../model/chat.js';
 import Message from '../model/meassge.js'
 import User from '../model/userschema.js';
-import { hasTokenLimitReached } from '../utils/userUsage.js';
+import { client } from '../config/redis.js';
 import { updateSummaryIfNeeded } from "../services/summaryService.js";
 import { buildMessagesForAI } from "../utils/chatContext.js";
+import {generateAIResponse} from "../services/openRouterService.js"
+
+
 
 
 export const getmessage = async (req, res) => {
@@ -50,14 +53,9 @@ export const sendMessage = async (req, res) => {
       });
     }
 
-    await resetUsageIfNeeded(req.user);
+    
 
-    if (hasTokenLimitReached(req.user)) {
-      return res.status(429).json({
-        message: "Token limit reached. Please try after some time.",
-        usage: req.user.usage,
-      });
-    }
+    
 
     let chat;
 
@@ -128,6 +126,16 @@ export const sendMessage = async (req, res) => {
 
     await addChatTokenUsage(chat, usage);
     await addUserTokenUsage(req.user, usage.totalTokens);
+    const tokenused=await client.incr(
+      req.tokenUsageKey,
+      usage
+    )
+    if(tokenused===usage.totalTokens){
+      await client.expire(
+        req.tokenUsageKey,
+        Number(process.env.TOKEN_WINDOW_SECONDS)
+      )
+    }
 
     res.status(201).json({
       message: "Message sent successfully",

@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import cookieParser from 'cookie-parser';
 import { signupschema,loginschema } from '../validator/userValidator.js';
+import { client } from '../config/redis.js';
 
 const createtoken=(id,email)=>{
     if(!process.env.KEY){
@@ -102,13 +103,32 @@ export const login=async (req,res)=>{
 }
 
 export const logout= async(req,res)=>{
-    res.clearCookie("token",{
-        httpOnly:true,
-        secure:false,
-    })
-    res.status(200).json({
-        message:'user logged out'
-    })
+    try{
+        if(req.token){
+            const currenttime=Math.floor(Date.now()-1000);
+             const remainingTime = payload.exp - currentTime;
+             if(remainingtime>0){
+                await client.set(`blocklist:${token}`,
+                    "blocked",
+                    {
+                        EX: remainingTime
+                    });
+             }
+        }
+         res.clearCookie("token",{
+            httpOnly: true,
+            secure: false,
+        })
+
+        res.status(200).json({
+            message: "User Logged Out Successfully"
+        })
+    }
+   catch(error){
+      return res.status(500).json({
+            message: "Internal Server Error"
+        });
+   }
 }
 
 export const profile = async(req,res)=>{

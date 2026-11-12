@@ -5,21 +5,16 @@ import User from "../model/userschema.js";
 
 export const createchat= async(req,res)=>{
    try{
-       const{model}=req.body;
-       if(!model){
-        res.status(401).json({
-            message:'no model given'
-        })
-       }
+        
 
        const chat=await Chat.create({
         userId:req.user._id,
-        model,
+        model:process.env.DEFAULT_AI_MODEL
        })
-       res.status(201).json({
-        chatid: chat._id,
-        model
-       })
+      res.status(201).json({
+            chatid: chat._id,
+            model: chat.model
+        });
    }
 
  catch(err){
